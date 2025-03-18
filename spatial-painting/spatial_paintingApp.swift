@@ -11,6 +11,7 @@ import SwiftUI
 struct spatial_paintingApp: App {
 
     @State private var appModel = AppModel()
+    @State private var model = ViewModel()
 
     var body: some Scene {
         WindowGroup {
@@ -20,7 +21,7 @@ struct spatial_paintingApp: App {
 
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
             ImmersiveView()
-                .environment(appModel)
+                .environment(model)
                 .onAppear {
                     appModel.immersiveSpaceState = .open
                 }
