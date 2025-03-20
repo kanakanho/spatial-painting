@@ -9,7 +9,18 @@ import SwiftUI
 import RealityKit
 
 /// A structure to represent the stroke.
-struct Stroke {
+class Stroke {
+    var activeColor:SimpleMaterial.Color = SimpleMaterial.Color.white
+    
+    func setActiveColor(color: SimpleMaterial.Color) {
+        activeColor = color
+        print(activeColor)
+        entity.components.set(ModelComponent(
+            mesh: MeshResource.generateSphere(radius: 0.02),
+            materials: [SimpleMaterial(color: activeColor, roughness: 1.0, isMetallic: false)]
+        ))
+    }
+    
     /// The stroke that represents the stroke.
     var entity = Entity()
 
@@ -63,7 +74,7 @@ struct Stroke {
             // Set the model component to the new mesh, and assign a simple material.
             entity.components.set(ModelComponent(
                 mesh: mesh,
-                materials: [SimpleMaterial(color: .white, roughness: 1.0, isMetallic: false)]
+                materials: [SimpleMaterial(color: activeColor, roughness: 1.0, isMetallic: false)]
             ))
 
             // Set the entity's transform and position.

@@ -18,6 +18,10 @@ extension SIMD4 {
 @Observable
 @MainActor
 class ViewModel {
+    let webSocketClient: WebSocketClient = .init()
+    let colorPaletModel = ColorPaletModel()
+    var canvas = PaintingCanvas()
+    
     let session = ARKitSession()
     let handTracking = HandTrackingProvider()
     let sceneReconstruction = SceneReconstructionProvider()
@@ -28,6 +32,8 @@ class ViewModel {
     var latestHandTracking: HandsUpdates = .init(left: nil, right: nil)
     var leftHandEntity = Entity()
     var rightHandEntity = Entity()
+    
+    var latestWorldTracking: WorldAnchor = .init(originFromAnchorTransform: .init())
     
     var isGlab: Bool = false
     
@@ -115,6 +121,19 @@ class ViewModel {
         }
     }
     
+    func processWorldUpdates() async {
+        for await update in worldTracking.anchorUpdates {
+            switch update.event {
+            case .updated:
+                let anchor = update.anchor
+                latestWorldTracking = anchor
+                print(latestWorldTracking.originFromAnchorTransform.position)
+            default:
+                break
+            }
+        }
+    }
+    
     func processHandUpdates() async {
         for await update in handTracking.anchorUpdates {
             switch update.event {
@@ -126,11 +145,14 @@ class ViewModel {
                 if anchor.chirality == .left {
                     latestHandTracking.left = anchor
                     guard let handAnchor = latestHandTracking.left else { continue }
-                    glabGesture(handAnchor: handAnchor,handGlab: .left)
+//                    glabGesture(handAnchor: handAnchor,handGlab: .left)
+                    watchLeftPalm(handAnchor: handAnchor)
+                    webSocketClient.sendHandAnchor(handAnchor)
                 } else if anchor.chirality == .right {
                     latestHandTracking.right = anchor
                     guard let handAnchor = latestHandTracking.right else { continue }
-                    glabGesture(handAnchor: handAnchor,handGlab: .right)
+//                    glabGesture(handAnchor: handAnchor,handGlab: .right)
+                    tapColorBall(handAnchor: handAnchor)
                 }
             default:
                 break
@@ -147,7 +169,7 @@ class ViewModel {
         let place = originFromIndex.columns.3.xyz
         
         let ball = ModelEntity(
-            mesh: .generateSphere(radius: 0.05),
+            mesh: .generateSphere(radius: 0.02),
             materials: [SimpleMaterial(color: .white, isMetallic: true)],
             collisionShape: .generateSphere(radius: 0.05),
             mass: 1.0
@@ -158,7 +180,7 @@ class ViewModel {
         ball.components.set(InputTargetComponent(allowedInputTypes: .all))
 
         // mode が dynamic でないと物理演算が適用されない
-        ball.components.set(PhysicsBodyComponent(shapes: [ShapeResource.generateSphere(radius: 0.05)], mass: 1.0, material: material, mode: .dynamic))
+        ball.components.set(PhysicsBodyComponent(shapes: [ShapeResource.generateSphere(radius: 0.05)], mass: 1.0, material: material, mode: .static))
         
         contentEntity.addChild(ball)
     }
@@ -234,5 +256,46 @@ class ViewModel {
     func calculateForceDirection(handAnchor: HandAnchor) -> SIMD3<Float> {
         let handRotation = Transform(matrix: handAnchor.originFromAnchorTransform).rotation
         return handRotation.act(handAnchor.chirality == .left ? SIMD3(1, 0, 0) : SIMD3(-1, 0, 0))
+    }
+    
+    // 手のひらをどこに向けているのかを判定
+    func watchLeftPalm(handAnchor: HandAnchor) {
+        guard let middleFingerIntermediateBase = handAnchor.handSkeleton?.joint(.middleFingerIntermediateBase) else {
+            return
+        }
+        
+        let positionMatrix: simd_float4x4 = handAnchor.originFromAnchorTransform * middleFingerIntermediateBase.anchorFromJointTransform
+        
+        if (positionMatrix.codable[1][1] < positionMatrix.codable[2][2]) {
+            colorPaletModel.colorPaletEntityDisable()
+            return
+        }
+        
+        colorPaletModel.colorPaletEntityEnabled()
+        
+        guard let rightOriginAnchor = latestHandTracking.right?.originFromAnchorTransform else {return}
+        guard let rightIndexFingerTipAnchor =  latestHandTracking.right?.handSkeleton?.joint(.indexFingerTip).anchorFromJointTransform else {return}
+        let rightIndexFingerTip = rightOriginAnchor * rightIndexFingerTipAnchor
+        
+        // ball の位置を wrist にする
+        contentEntity.findEntity(named: "ball")?.setPosition(rightIndexFingerTip.position, relativeTo: nil)
+        
+        colorPaletModel.updatePosition(position: positionMatrix.position)
+    }
+    
+    func tapColorBall(handAnchor: HandAnchor) {
+        guard let indexFingerTipAnchor = handAnchor.handSkeleton?.joint(.indexFingerTip).anchorFromJointTransform else {return}
+        let indexFingerTipOrigin = handAnchor.originFromAnchorTransform
+        let indexFingerTip = indexFingerTipOrigin * indexFingerTipAnchor
+        let colorPaletModelMatrix = colorPaletModel.colorPaletEntity.transform
+        for color in colorPaletModel.colors {
+            guard let colorEntity = colorPaletModel.colorPaletEntity.findEntity(named: color.accessibilityName) else { continue }
+            let colorBall = colorPaletModelMatrix.matrix * colorEntity.transform.matrix
+            if simd_distance(colorBall.position, indexFingerTip.position) < 0.005 {
+                colorPaletModel.colorPaletEntityDisable()
+                colorPaletModel.setActiveColor(color: color)
+                canvas.currentStroke?.setActiveColor(color: color)
+            }
+        }
     }
 }

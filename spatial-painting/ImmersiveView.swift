@@ -16,13 +16,13 @@ struct ImmersiveView: View {
     @Environment(\.dismissImmersiveSpace) var dismissImmersiveSpace
     @Environment(\.openWindow) var openWindow
 
-    @State var canvas = PaintingCanvas()
     @State var lastIndexPose: SIMD3<Float>?
 
     var body: some View {
         RealityView { content in
             content.add(model.setupContentEntity())
-            let root = canvas.root
+            content.add(model.colorPaletModel.colorPaletEntity)
+            let root = model.canvas.root
             content.add(root)
             
             root.components.set(ClosureComponent(closure: { deltaTime in
@@ -63,6 +63,7 @@ struct ImmersiveView: View {
             }))
         }
         .task {
+            model.webSocketClient.connect()
             do {
                 if model.dataProvidersAreSupported && model.isReadyToRun {
                     try await model.session.run([model.sceneReconstruction, model.handTracking])
@@ -84,16 +85,25 @@ struct ImmersiveView: View {
         .task {
             await model.monitorSessionEvents()
         }
+        .task {
+            await model.processWorldUpdates()
+        }
+        .task {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                model.initBall()
+                model.colorPaletModel.initEntity()
+            }
+        }
         .gesture(
             DragGesture(minimumDistance: 0)
                 .targetedToAnyEntity()
                 .onChanged({ _ in
                     if let pos = lastIndexPose {
-                        canvas.addPoint(pos)
+                        model.canvas.addPoint(pos)
                     }
                 })
                 .onEnded({ _ in
-                    canvas.finishStroke()
+                    model.canvas.finishStroke()
                 })
             )
     }
