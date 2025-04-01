@@ -60,8 +60,43 @@ class ViewModel {
     
     var errorState = false
     
+    // ストロークを消去する時の長押し時間 added by nagao 2025/3/24
+    var clearTime: Int = 0
+    
+    let fingerEntities: [HandAnchor.Chirality: ModelEntity] = [
+        /*.left: .createFingertip(name: "L", color: UIColor(red: 220/255, green: 220/255, blue: 220/255, alpha: 1.0)),*/
+        .right: .createFingertip(name: "R", color: UIColor(red: 220/255, green: 220/255, blue: 220/255, alpha: 1.0))
+    ]
+    
     func setupContentEntity() -> Entity {
+        for entity in fingerEntities.values {
+            contentEntity.addChild(entity)
+        }
         return contentEntity
+    }
+    
+    // 指先に球を表示 added by nagao 2025/3/22
+    func showFingerTipSpheres() {
+        for entity in fingerEntities.values {
+            contentEntity.addChild(entity)
+        }
+    }
+    
+    func dismissFingerTipSpheres() {
+        for entity in fingerEntities.values {
+            entity.removeFromParent()
+        }
+    }
+    
+    func changeFingerColor(entity: Entity, colorName: String) {
+        for color in colorPaletModel.colors {
+            let words = color.accessibilityName.split(separator: " ")
+            if let name = words.last, name == colorName {
+                let material = SimpleMaterial(color: color, isMetallic: true)
+                entity.components.set(ModelComponent(mesh: .generateSphere(radius: 0.01), materials: [material]))
+                break
+            }
+        }
     }
     
     var dataProvidersAreSupported: Bool {
@@ -142,17 +177,24 @@ class ViewModel {
                 
                 guard anchor.isTracked else { continue }
                 
+                // added by nagao 2025/3/22
+                let fingerTipIndex = anchor.handSkeleton?.joint(.indexFingerTip)
+                let originFromWrist = anchor.originFromAnchorTransform
+                let wristFromIndex = fingerTipIndex?.anchorFromJointTransform
+                let originFromIndex = originFromWrist * wristFromIndex!
+                fingerEntities[anchor.chirality]?.setTransformMatrix(originFromIndex, relativeTo: nil)
+                
                 if anchor.chirality == .left {
                     latestHandTracking.left = anchor
                     guard let handAnchor = latestHandTracking.left else { continue }
-//                    glabGesture(handAnchor: handAnchor,handGlab: .left)
+                    //                    glabGesture(handAnchor: handAnchor,handGlab: .left)
                     watchLeftPalm(handAnchor: handAnchor)
                     webSocketClient.sendHandAnchor(handAnchor)
                 } else if anchor.chirality == .right {
                     latestHandTracking.right = anchor
-                    guard let handAnchor = latestHandTracking.right else { continue }
-//                    glabGesture(handAnchor: handAnchor,handGlab: .right)
-                    tapColorBall(handAnchor: handAnchor)
+                    //                    guard let handAnchor = latestHandTracking.right else { continue }
+                    //                    glabGesture(handAnchor: handAnchor,handGlab: .right)
+                    //                    tapColorBall(handAnchor: handAnchor)
                 }
             default:
                 break
@@ -178,7 +220,7 @@ class ViewModel {
         ball.name = "ball"
         ball.setPosition(place, relativeTo: nil)
         ball.components.set(InputTargetComponent(allowedInputTypes: .all))
-
+        
         // mode が dynamic でないと物理演算が適用されない
         ball.components.set(PhysicsBodyComponent(shapes: [ShapeResource.generateSphere(radius: 0.05)], mass: 1.0, material: material, mode: .static))
         
@@ -190,7 +232,7 @@ class ViewModel {
         if(handGlab == .right && entitiyOperationLock == .left || handGlab == .left && entitiyOperationLock == .right) {
             return
         }
-
+        
         guard let wrist = handAnchor.handSkeleton?.joint(.wrist).anchorFromJointTransform else { return }
         guard let thumbIntermediateTip = handAnchor.handSkeleton?.joint(.thumbIntermediateTip).anchorFromJointTransform else { return }
         guard let indexFingerTip = handAnchor.handSkeleton?.joint(.indexFingerTip).anchorFromJointTransform else { return }
@@ -273,14 +315,28 @@ class ViewModel {
         
         colorPaletModel.colorPaletEntityEnabled()
         
-        guard let rightOriginAnchor = latestHandTracking.right?.originFromAnchorTransform else {return}
-        guard let rightIndexFingerTipAnchor =  latestHandTracking.right?.handSkeleton?.joint(.indexFingerTip).anchorFromJointTransform else {return}
-        let rightIndexFingerTip = rightOriginAnchor * rightIndexFingerTipAnchor
+        guard let wristBase = handAnchor.handSkeleton?.joint(.wrist) else {
+            return
+        }
         
-        // ball の位置を wrist にする
-        contentEntity.findEntity(named: "ball")?.setPosition(rightIndexFingerTip.position, relativeTo: nil)
+        let wristMatrix: simd_float4x4 = handAnchor.originFromAnchorTransform * wristBase.anchorFromJointTransform
         
-        colorPaletModel.updatePosition(position: positionMatrix.position)
+        colorPaletModel.updatePosition(position: positionMatrix.position, wristPosition: wristMatrix.position)
+    }
+    
+    // 色を選択する added by nagao 2025/3/22
+    func selectColor(colorName: String) {
+        for color in colorPaletModel.colors {
+            let words = color.accessibilityName.split(separator: " ")
+            if let name = words.last, name == colorName {
+                //print("💥 Selected color accessibilityName \(color.accessibilityName)")
+                colorPaletModel.colorPaletEntityDisable()
+                colorPaletModel.setActiveColor(color: color)
+                canvas.setActiveColor(color: color)
+                //canvas.currentStroke?.setActiveColor(color: color)
+                break
+            }
+        }
     }
     
     func tapColorBall(handAnchor: HandAnchor) {
@@ -296,6 +352,35 @@ class ViewModel {
                 colorPaletModel.setActiveColor(color: color)
                 canvas.currentStroke?.setActiveColor(color: color)
             }
+        }
+    }
+    
+    // ストロークを消去する時の長押し時間の処理 added by nagao 2025/3/24
+    func recordTime(isBegan: Bool) -> Bool {
+        if isBegan {
+            let now = Date()
+            let milliseconds = Int(now.timeIntervalSince1970 * 1000)
+            let calendar = Calendar.current
+            let nanoseconds = calendar.component(.nanosecond, from: now)
+            let exactMilliseconds = milliseconds + (nanoseconds / 1_000_000)
+            clearTime = exactMilliseconds
+            //print("現在時刻: \(exactMilliseconds)")
+            return true
+        } else {
+            if clearTime > 0 {
+                let now = Date()
+                let milliseconds = Int(now.timeIntervalSince1970 * 1000)
+                let calendar = Calendar.current
+                let nanoseconds = calendar.component(.nanosecond, from: now)
+                let exactMilliseconds = milliseconds + (nanoseconds / 1_000_000)
+                let time = exactMilliseconds - clearTime
+                if time > 1000 {
+                    clearTime = 0
+                    //print("経過時間: \(time)")
+                    return true
+                }
+            }
+            return false
         }
     }
 }

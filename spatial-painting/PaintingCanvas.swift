@@ -12,10 +12,13 @@ import RealityKit
 class PaintingCanvas {
     /// The main root entity for the painting canvas.
     let root = Entity()
+    var strokes: [Stroke] = []
 
     /// The stroke that a person creates.
     var currentStroke: Stroke?
 
+    var activeColor = SimpleMaterial.Color.white
+    
     /// The distance for the box that extends in the positive direction.
     let big: Float = 1E2
     
@@ -49,6 +52,10 @@ class PaintingCanvas {
         return box
     }
 
+    func setActiveColor(color: SimpleMaterial.Color) {
+        activeColor = color
+    }
+
     /// Generate a point when the user uses the drag gesture.
     func addPoint(_ position: SIMD3<Float>) {
         /// The maximum distance between two points before requiring a new point.
@@ -57,6 +64,8 @@ class PaintingCanvas {
         // Start a new stroke if no stroke exists.
         if currentStroke == nil {
             currentStroke = Stroke()
+            currentStroke!.setActiveColor(color: activeColor)
+            strokes.append(currentStroke!)
 
             // Add the stroke to the root.
             root.addChild(currentStroke!.entity)
