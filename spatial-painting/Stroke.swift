@@ -14,11 +14,6 @@ class Stroke {
     
     func setActiveColor(color: SimpleMaterial.Color) {
         activeColor = color
-        print(activeColor)
-        entity.components.set(ModelComponent(
-            mesh: MeshResource.generateSphere(radius: 0.02),
-            materials: [SimpleMaterial(color: activeColor, roughness: 1.0, isMetallic: false)]
-        ))
     }
     
     /// The stroke that represents the stroke.

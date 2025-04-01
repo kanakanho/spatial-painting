@@ -27,7 +27,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		EBCCDED72D88F9630017DF26 /* Exceptions for "spatial-painting" folder in "spatial-painting" target */ = {
+		EB6680772D9BDE3F0065AA70 /* Exceptions for "spatial-painting" folder in "spatial-painting" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
@@ -40,7 +40,7 @@
 		EBCCDEB82D88F9620017DF26 /* spatial-painting */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				EBCCDED72D88F9630017DF26 /* Exceptions for "spatial-painting" folder in "spatial-painting" target */,
+				EB6680772D9BDE3F0065AA70 /* Exceptions for "spatial-painting" folder in "spatial-painting" target */,
 			);
 			path = "spatial-painting";
 			sourceTree = "<group>";
