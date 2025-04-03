@@ -11,6 +11,11 @@ import RealityKit
 import RealityKitContent
 
 struct ImmersiveView: View {
+    @ObservedObject var peerManager : PeerManager
+
+    @State var latestRightIndexFingerCoordinates: simd_float4x4 = .init()
+    @State var latestLeftIndexFingerCoordinates: simd_float4x4 = .init()
+    
     
     @Environment(ViewModel.self) var model
     @Environment(\.dismissImmersiveSpace) var dismissImmersiveSpace
@@ -44,6 +49,7 @@ struct ImmersiveView: View {
                     _ = content.subscribe(to: CollisionEvents.Ended.self, on: fingerEntity) { collisionEvent in
                         if model.colorPaletModel.colorNames.contains(collisionEvent.entityB.name) {
                             model.selectColor(colorName: collisionEvent.entityB.name)
+                            peerManager.sendMessage("selectColor:\(collisionEvent.entityB.name)")
                             //print("💥 Collision between \(collisionEvent.entityA.name) and \(collisionEvent.entityB.name) ended")
                         } else if (collisionEvent.entityB.name == "clear") {
                             if model.recordTime(isBegan: false) {
@@ -129,16 +135,97 @@ struct ImmersiveView: View {
                 .onChanged({ _ in
                     if let pos = lastIndexPose {
                         model.canvas.addPoint(pos)
+                        if (peerManager.isHost){
+                            let matrix = simd_float4x4(
+                                SIMD4<Float>(1, 0, 0, 0),
+                                SIMD4<Float>(0, 1, 0, 0),
+                                SIMD4<Float>(0, 0, 1, 0),
+                                SIMD4<Float>(pos.x, pos.y, pos.z, 1)
+                            )
+                            let clientMatrix = matrix * peerManager.transformationMatrix
+                            let clinetPos = clientMatrix.position
+                            peerManager.sendMessage("addPoint:\(clinetPos.x),\(clinetPos.y),\(clinetPos.z)")
+                        } else {
+                            peerManager.sendMessage("addPoint:\(pos.x),\(pos.y),\(pos.z)")
+                        }
                     }
                 })
                 .onEnded({ _ in
                     model.canvas.finishStroke()
+                    peerManager.sendMessage("finishStroke")
                 })
             )
+        .onChange(of: model.errorState) {
+            openWindow(id: "error")
+        }
+        .onChange(of: model.latestRightIndexFingerCoordinates) {
+            if (!peerManager.isUpdatePeerManagerBothIndexFingerCoordinate){
+                return
+            }
+            
+            latestRightIndexFingerCoordinates = model.latestRightIndexFingerCoordinates
+            
+            peerManager.myBothIndexFingerCoordinate = BothIndexFingerCoordinate(unixTime: Int(Date().timeIntervalSince1970), indexFingerCoordinate: IndexFingerCoordinate(left:  latestLeftIndexFingerCoordinates, right:  latestRightIndexFingerCoordinates))
+            
+            if (!peerManager.isUpdatePeerManagerRightIndexFingerCoordinates){
+                return
+            }
+            
+            peerManager.myRightIndexFingerCoordinates = RightIndexFingerCoordinates(unixTime: Int(Date().timeIntervalSince1970), rightIndexFingerCoordinates:  latestRightIndexFingerCoordinates)
+        }
+        .onChange(of: model.latestLeftIndexFingerCoordinates) {
+            if (!peerManager.isUpdatePeerManagerBothIndexFingerCoordinate){
+                return
+            }
+            latestLeftIndexFingerCoordinates = model.latestLeftIndexFingerCoordinates
+            
+            peerManager.myBothIndexFingerCoordinate = BothIndexFingerCoordinate(unixTime: Int(Date().timeIntervalSince1970), indexFingerCoordinate: IndexFingerCoordinate(left: latestLeftIndexFingerCoordinates, right:  latestRightIndexFingerCoordinates))
+        }
+        .onChange(of: peerManager.receivedMessage) {
+            if (peerManager.receivedMessage.hasPrefix("selectColor:")){
+                let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "selectColor:", with: "")
+                model.selectColor(colorName: receivedMessage)
+            } else if (peerManager.receivedMessage.hasPrefix("addPoint:")){
+                let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "addPoint:", with: "")
+                let point = receivedMessage.split(separator: ",").map { Float($0) ?? 0 }
+                if (peerManager.isHost) {
+                    let matrix = simd_float4x4(
+                        SIMD4<Float>(1, 0, 0, 0),
+                        SIMD4<Float>(0, 1, 0, 0),
+                        SIMD4<Float>(0, 0, 1, 0),
+                        SIMD4<Float>(point[0], point[1], point[2], 1)
+                    )
+                    let clientMatrix = matrix * peerManager.transformationMatrixClientToHost
+                    let clinetPos = clientMatrix.position
+                    model.canvas.addPoint(clinetPos)
+                } else {
+                    model.canvas.addPoint(SIMD3<Float>(point[0], point[1], point[2]))
+                }
+            } else if (peerManager.receivedMessage == "finishStroke"){
+                model.canvas.finishStroke()
+            }
+//            if (peerManager.receivedMessage.hasPrefix("matrix:")){
+//                let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "matrix:", with: "")
+//                receiveMatrix(message: receivedMessage)
+//            }
+        }
+        .onChange(of: peerManager.transformationMatrixPreparationState) {
+            if (peerManager.transformationMatrixPreparationState == .prepared) {
+            }
+        }
+    }
+
+    func sendMatrix() {
+        model.contentEntity.children.forEach { entity in
+            let clientTransformMatrix =  entity.transform.matrix * peerManager.transformationMatrix
+            let floatList: [Float] = clientTransformMatrix.floatList
+            let floatListStr = floatList.map { String($0) }
+            peerManager.sendMessage("matrix:\(entity.name),\(floatListStr)")
+        }
     }
 }
 
 #Preview(immersionStyle: .mixed) {
-    ImmersiveView()
+    ImmersiveView(peerManager: PeerManager())
         .environment(AppModel())
 }

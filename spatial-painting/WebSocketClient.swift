@@ -64,10 +64,6 @@ extension simd_float4 {
 }
 
 extension simd_float4x4 {
-    var position: SIMD3<Float> {
-        self.columns.3.xyz
-    }
-
     var codable: [[Float]] {
         return [columns.0.codable, columns.1.codable, columns.2.codable, columns.3.codable]
     }

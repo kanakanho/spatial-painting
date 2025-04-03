@@ -1,25 +1,45 @@
 //
 //  ContentView.swift
-//  spatial-painting
+//  multipeer-share-coordinate-throw-ball
 //
-//  Created by blueken on 2025/03/18.
+//  Created by blueken on 2024/12/20.
 //
 
 import SwiftUI
 import RealityKit
 import RealityKitContent
 
+enum SharedCoordinateState {
+    case prepare
+    case sharing
+    case shared
+}
+
 struct ContentView: View {
-    @State private var showImmersiveSpace = false
-    @State private var immersiveSpaceIsShown = false
-
-    @Environment(\.openImmersiveSpace) var openImmersiveSpace
-    @Environment(\.dismissImmersiveSpace) var dismissImmersiveSpace
-    @Environment(\.dismissWindow) var dismissWindow
-
+    @Environment(AppModel.self) private var appModel
+    @ObservedObject var peerManager = PeerManager()
+    @State private var sharedCoordinateState: SharedCoordinateState = .prepare
+    
     var body: some View {
         VStack {
-            ToggleImmersiveSpaceButton()
+            NavigationStack {
+                switch sharedCoordinateState {
+                case .prepare:
+                    ToggleImmersiveSpaceButton()
+                        .onChange(of: appModel.immersiveSpaceState){
+                            if (appModel.immersiveSpaceState == .open){
+                                sharedCoordinateState = .sharing
+                            }
+                        }
+                case .sharing:
+                    VStack{
+                        TransformationMatrixPreparationView(peerManager:peerManager,sharedCoordinateState: $sharedCoordinateState)
+                    }
+                case .shared:
+                    Text("Shared Coordinate Ready")
+                }
+            }
+            Spacer()
         }
         .padding()
     }

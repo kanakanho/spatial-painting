@@ -13,14 +13,16 @@ struct spatial_paintingApp: App {
     @State private var appModel = AppModel()
     @State private var model = ViewModel()
 
+    @StateObject private var peerManager = PeerManager()
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(peerManager:peerManager)
                 .environment(appModel)
         }
 
         ImmersiveSpace(id: appModel.immersiveSpaceID) {
-            ImmersiveView()
+            ImmersiveView(peerManager:peerManager)
                 .environment(model)
                 .onAppear {
                     appModel.immersiveSpaceState = .open
