@@ -199,9 +199,31 @@ struct ImmersiveView: View {
                     )
                     let clientMatrix = matrix * peerManager.transformationMatrixClientToHost
                     let clinetPos = clientMatrix.position
-                    model.anotherUserCanvas.addPoint(clinetPos)
+                    let originPoints:[SIMD3<Float>] = [
+                        peerManager.myRightIndexFingerCoordinates.rightIndexFingerCoordinates.position,
+                        peerManager.myBothIndexFingerCoordinate.indexFingerCoordinate.left.position,
+                        peerManager.myBothIndexFingerCoordinate.indexFingerCoordinate.right.position
+                    ]
+                    let originPoint:SIMD3<Float> = SIMD3<Float>(
+                        (originPoints[0].x + originPoints[1].x + originPoints[2].x) / 3,
+                        (originPoints[0].y + originPoints[1].y + originPoints[2].y) / 3,
+                        0
+                    )
+                    let offset = originPoint - SIMD3<Float>(clinetPos[0], clinetPos[1], clinetPos[2])
+                    model.anotherUserCanvas.addPoint(SIMD3<Float>(offset.x,offset.y,clinetPos.z))
                 } else {
-                    model.anotherUserCanvas.addPoint(SIMD3<Float>(point[0], point[1], point[2]))
+                    let originPoints:[SIMD3<Float>] = [
+                        peerManager.myRightIndexFingerCoordinates.rightIndexFingerCoordinates.position,
+                        peerManager.myBothIndexFingerCoordinate.indexFingerCoordinate.left.position,
+                        peerManager.myBothIndexFingerCoordinate.indexFingerCoordinate.right.position
+                    ]
+                    let originPoint:SIMD3<Float> = SIMD3<Float>(
+                        (originPoints[0].x + originPoints[1].x + originPoints[2].x) / 3,
+                        (originPoints[0].y + originPoints[1].y + originPoints[2].y) / 3,
+                        0
+                    )
+                    let offset = originPoint - SIMD3<Float>(point[0], point[1], point[2])
+                    model.anotherUserCanvas.addPoint(SIMD3<Float>(offset.x,offset.y,point[2]))
                 }
             } else if (peerManager.receivedMessage == "finishStroke"){
                 model.anotherUserCanvas.finishStroke()
