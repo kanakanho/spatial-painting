@@ -32,7 +32,9 @@ struct ImmersiveView: View {
                 content.add(model.setupContentEntity())
                 content.add(model.colorPaletModel.colorPaletEntity)
                 let root = model.canvas.root
+                let anotherUserRoot = model.anotherUserCanvas.root
                 content.add(root)
+                content.add(anotherUserRoot)
 
                 // added by nagao 3/22
                 for fingerEntity in model.fingerEntities.values {
@@ -197,12 +199,12 @@ struct ImmersiveView: View {
                     )
                     let clientMatrix = matrix * peerManager.transformationMatrixClientToHost
                     let clinetPos = clientMatrix.position
-                    model.canvas.addPoint(clinetPos)
+                    model.anotherUserCanvas.addPoint(clinetPos)
                 } else {
-                    model.canvas.addPoint(SIMD3<Float>(point[0], point[1], point[2]))
+                    model.anotherUserCanvas.addPoint(SIMD3<Float>(point[0], point[1], point[2]))
                 }
             } else if (peerManager.receivedMessage == "finishStroke"){
-                model.canvas.finishStroke()
+                model.anotherUserCanvas.finishStroke()
             }
 //            if (peerManager.receivedMessage.hasPrefix("matrix:")){
 //                let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "matrix:", with: "")

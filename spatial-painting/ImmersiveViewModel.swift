@@ -21,6 +21,7 @@ class ViewModel {
     let webSocketClient: WebSocketClient = .init()
     let colorPaletModel = ColorPaletModel()
     var canvas = PaintingCanvas()
+    var anotherUserCanvas = PaintingCanvas()
     
     let session = ARKitSession()
     let handTracking = HandTrackingProvider()
