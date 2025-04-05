@@ -21,7 +21,8 @@ class ViewModel {
     let webSocketClient: WebSocketClient = .init()
     let colorPaletModel = ColorPaletModel()
     var canvas = PaintingCanvas()
-    var anotherUserCanvas = PaintingCanvas()
+    
+    var isCanvasEnabled: Bool = false
     
     let session = ARKitSession()
     let handTracking = HandTrackingProvider()
@@ -207,6 +208,11 @@ class ViewModel {
 
     // 手のひらをどこに向けているのかを判定
     func watchLeftPalm(handAnchor: HandAnchor) {
+        // 座標変換の処理が終了するまでは、お絵描きの機能を行えないようにする
+        if !isCanvasEnabled {
+            return
+        }
+        
         guard let middleFingerIntermediateBase = handAnchor.handSkeleton?.joint(.middleFingerIntermediateBase) else {
             return
         }
@@ -244,22 +250,6 @@ class ViewModel {
         }
     }
     
-    func tapColorBall(handAnchor: HandAnchor) {
-        guard let indexFingerTipAnchor = handAnchor.handSkeleton?.joint(.indexFingerTip).anchorFromJointTransform else {return}
-        let indexFingerTipOrigin = handAnchor.originFromAnchorTransform
-        let indexFingerTip = indexFingerTipOrigin * indexFingerTipAnchor
-        let colorPaletModelMatrix = colorPaletModel.colorPaletEntity.transform
-        for color in colorPaletModel.colors {
-            guard let colorEntity = colorPaletModel.colorPaletEntity.findEntity(named: color.accessibilityName) else { continue }
-            let colorBall = colorPaletModelMatrix.matrix * colorEntity.transform.matrix
-            if simd_distance(colorBall.position, indexFingerTip.position) < 0.005 {
-                colorPaletModel.colorPaletEntityDisable()
-                colorPaletModel.setActiveColor(color: color)
-                canvas.currentStroke?.setActiveColor(color: color)
-            }
-        }
-    }
-    
     // ストロークを消去する時の長押し時間の処理 added by nagao 2025/3/24
     func recordTime(isBegan: Bool) -> Bool {
         if isBegan {
@@ -287,5 +277,19 @@ class ViewModel {
             }
             return false
         }
+    }
+    
+    func initBall(position: SIMD3<Float>) {
+        let ball = ModelEntity(
+            mesh: .generateSphere(radius: 0.05),
+            materials: [SimpleMaterial(color: .red, isMetallic: true)],
+            collisionShape: .generateSphere(radius: 0.05),
+            mass: 0.0
+        )
+        ball.name = "rightIndexTip"
+        ball.setPosition(position, relativeTo: nil)
+        ball.components.set(InputTargetComponent(allowedInputTypes: .all))
+        
+        contentEntity.addChild(ball)
     }
 }

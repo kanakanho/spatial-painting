@@ -127,7 +127,7 @@ class PeerManager: NSObject, ObservableObject {
     func calculateTransformationMatrix() {
         let hostMatrix = calcAffineMatrixArgumentList(myRightIndexFingerCoordinates.rightIndexFingerCoordinates, myBothIndexFingerCoordinate.indexFingerCoordinate.left, myBothIndexFingerCoordinate.indexFingerCoordinate.right)
         
-        let clientMatrix = calcAffineMatrixArgumentList(rightIndexFingerCoordinates.rightIndexFingerCoordinates, bothIndexFingerCoordinate.indexFingerCoordinate.left, bothIndexFingerCoordinate.indexFingerCoordinate.right)
+        let clientMatrix = calcAffineMatrixArgumentList(rightIndexFingerCoordinates.rightIndexFingerCoordinates, bothIndexFingerCoordinate.indexFingerCoordinate.right, bothIndexFingerCoordinate.indexFingerCoordinate.left)
         
         print("hostMatrix")
         print(hostMatrix)

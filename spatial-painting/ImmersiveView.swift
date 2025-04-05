@@ -32,14 +32,17 @@ struct ImmersiveView: View {
                 content.add(model.setupContentEntity())
                 content.add(model.colorPaletModel.colorPaletEntity)
                 let root = model.canvas.root
-                let anotherUserRoot = model.anotherUserCanvas.root
                 content.add(root)
-                content.add(anotherUserRoot)
 
                 // added by nagao 3/22
                 for fingerEntity in model.fingerEntities.values {
                     //print("Collision Setting for \(fingerEntity.name)")
                     _ = content.subscribe(to: CollisionEvents.Began.self, on: fingerEntity) { collisionEvent in
+                        // 座標変換の処理が終了するまでは、お絵描きの機能を行えないようにする
+                        if peerManager.transformationMatrixPreparationState != .prepared {
+                            return
+                        }
+
                         if model.colorPaletModel.colorNames.contains(collisionEvent.entityB.name) {
                             model.changeFingerColor(entity: fingerEntity, colorName: collisionEvent.entityB.name)
                             //print("💥 Collision between \(collisionEvent.entityA.name) and \(collisionEvent.entityB.name) began")
@@ -49,6 +52,11 @@ struct ImmersiveView: View {
                     }
 
                     _ = content.subscribe(to: CollisionEvents.Ended.self, on: fingerEntity) { collisionEvent in
+                        // 座標変換の処理が終了するまでは、お絵描きの機能を行えないようにする
+                        if peerManager.transformationMatrixPreparationState != .prepared {
+                            return
+                        }
+                        
                         if model.colorPaletModel.colorNames.contains(collisionEvent.entityB.name) {
                             model.selectColor(colorName: collisionEvent.entityB.name)
                             peerManager.sendMessage("selectColor:\(collisionEvent.entityB.name)")
@@ -135,6 +143,11 @@ struct ImmersiveView: View {
             DragGesture(minimumDistance: 0)
                 .targetedToAnyEntity()
                 .onChanged({ _ in
+                    // 座標変換の処理が終了するまでは、お絵描きの機能を行えないようにする
+                    if peerManager.transformationMatrixPreparationState != .prepared {
+                        return
+                    }
+
                     if let pos = lastIndexPose {
                         model.canvas.addPoint(pos)
                         if (peerManager.isHost){
@@ -153,6 +166,11 @@ struct ImmersiveView: View {
                     }
                 })
                 .onEnded({ _ in
+                    // 座標変換の処理が終了するまでは、お絵描きの機能を行えないようにする
+                    if peerManager.transformationMatrixPreparationState != .prepared {
+                        return
+                    }
+
                     model.canvas.finishStroke()
                     peerManager.sendMessage("finishStroke")
                 })
@@ -199,34 +217,13 @@ struct ImmersiveView: View {
                     )
                     let clientMatrix = matrix * peerManager.transformationMatrixClientToHost
                     let clinetPos = clientMatrix.position
-                    let originPoints:[SIMD3<Float>] = [
-                        peerManager.myRightIndexFingerCoordinates.rightIndexFingerCoordinates.position,
-                        peerManager.myBothIndexFingerCoordinate.indexFingerCoordinate.left.position,
-                        peerManager.myBothIndexFingerCoordinate.indexFingerCoordinate.right.position
-                    ]
-                    let originPoint:SIMD3<Float> = SIMD3<Float>(
-                        (originPoints[0].x + originPoints[1].x + originPoints[2].x) / 3,
-                        (originPoints[0].y + originPoints[1].y + originPoints[2].y) / 3,
-                        0
-                    )
-                    let offset = originPoint - SIMD3<Float>(clinetPos[0], clinetPos[1], clinetPos[2])
-                    model.anotherUserCanvas.addPoint(SIMD3<Float>(offset.x,offset.y,clinetPos.z))
+                    model.canvas.addPoint(clinetPos)
                 } else {
-                    let originPoints:[SIMD3<Float>] = [
-                        peerManager.myRightIndexFingerCoordinates.rightIndexFingerCoordinates.position,
-                        peerManager.myBothIndexFingerCoordinate.indexFingerCoordinate.left.position,
-                        peerManager.myBothIndexFingerCoordinate.indexFingerCoordinate.right.position
-                    ]
-                    let originPoint:SIMD3<Float> = SIMD3<Float>(
-                        (originPoints[0].x + originPoints[1].x + originPoints[2].x) / 3,
-                        (originPoints[0].y + originPoints[1].y + originPoints[2].y) / 3,
-                        0
-                    )
-                    let offset = originPoint - SIMD3<Float>(point[0], point[1], point[2])
-                    model.anotherUserCanvas.addPoint(SIMD3<Float>(offset.x,offset.y,point[2]))
+                    let pos = SIMD3<Float>(point[0], point[1], point[2])
+                    model.canvas.addPoint(pos)
                 }
             } else if (peerManager.receivedMessage == "finishStroke"){
-                model.anotherUserCanvas.finishStroke()
+                model.canvas.finishStroke()
             }
 //            if (peerManager.receivedMessage.hasPrefix("matrix:")){
 //                let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "matrix:", with: "")
@@ -235,6 +232,12 @@ struct ImmersiveView: View {
         }
         .onChange(of: peerManager.transformationMatrixPreparationState) {
             if (peerManager.transformationMatrixPreparationState == .prepared) {
+                model.isCanvasEnabled = true
+                if (peerManager.isHost) {
+                    model.initBall(position: (peerManager.rightIndexFingerCoordinates.rightIndexFingerCoordinates * peerManager.transformationMatrixClientToHost).position)
+                } else {
+                    model.initBall(position: peerManager.myRightIndexFingerCoordinates.rightIndexFingerCoordinates.position)
+                }
             }
         }
     }
