@@ -134,6 +134,11 @@ struct ImmersiveView: View {
         .task {
             await model.processWorldUpdates()
         }
+//        .task {
+//            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+//                model.initBall(transform: latestRightIndexFingerCoordinates)
+//            }
+//        }
         .task {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 model.colorPaletModel.initEntity()
@@ -157,7 +162,7 @@ struct ImmersiveView: View {
                                 SIMD4<Float>(0, 0, 1, 0),
                                 SIMD4<Float>(pos.x, pos.y, pos.z, 1)
                             )
-                            let clientMatrix = matrix * peerManager.transformationMatrix
+                            let clientMatrix = peerManager.transformationMatrix * matrix
                             let clinetPos = clientMatrix.position
                             peerManager.sendMessage("addPoint:\(clinetPos.x),\(clinetPos.y),\(clinetPos.z)")
                         } else {
@@ -215,7 +220,7 @@ struct ImmersiveView: View {
                         SIMD4<Float>(0, 0, 1, 0),
                         SIMD4<Float>(point[0], point[1], point[2], 1)
                     )
-                    let clientMatrix = matrix * peerManager.transformationMatrixClientToHost
+                    let clientMatrix = peerManager.transformationMatrixClientToHost * matrix
                     let clinetPos = clientMatrix.position
                     model.canvas.addPoint(clinetPos)
                 } else {
@@ -234,9 +239,9 @@ struct ImmersiveView: View {
             if (peerManager.transformationMatrixPreparationState == .prepared) {
                 model.isCanvasEnabled = true
                 if (peerManager.isHost) {
-                    model.initBall(position: (peerManager.rightIndexFingerCoordinates.rightIndexFingerCoordinates * peerManager.transformationMatrixClientToHost).position)
+                    model.initBall(transform: (peerManager.transformationMatrixClientToHost * peerManager.rightIndexFingerCoordinates.rightIndexFingerCoordinates))
                 } else {
-                    model.initBall(position: peerManager.myRightIndexFingerCoordinates.rightIndexFingerCoordinates.position)
+                    model.initBall(transform: peerManager.myRightIndexFingerCoordinates.rightIndexFingerCoordinates)
                 }
             }
         }
