@@ -279,17 +279,58 @@ class ViewModel {
         }
     }
     
-    func initBall(position: SIMD3<Float>) {
+    func initBall(transform: simd_float4x4) {
         let ball = ModelEntity(
-            mesh: .generateSphere(radius: 0.05),
-            materials: [SimpleMaterial(color: .red, isMetallic: true)],
+            mesh: .generateSphere(radius: 0.02),
+            materials: [SimpleMaterial(color: .cyan, isMetallic: true)],
             collisionShape: .generateSphere(radius: 0.05),
             mass: 0.0
         )
         ball.name = "rightIndexTip"
-        ball.setPosition(position, relativeTo: nil)
+        ball.setPosition(transform.position, relativeTo: nil)
+        ball.setOrientation(simd_quatf(transform), relativeTo: nil)
         ball.components.set(InputTargetComponent(allowedInputTypes: .all))
         
         contentEntity.addChild(ball)
+        
+        // zStrokeArrow
+        let zStroke = ModelEntity(
+            mesh: .init(shape: .generateBox(width: 0.004, height: 0.004, depth: 0.1)),
+            materials: [SimpleMaterial(color: .blue, isMetallic: true)],
+            collisionShape: .generateSphere(radius: 0.005),
+            mass: 0.0
+        )
+        
+        zStroke.name = "zStrokeArrow"
+        zStroke.setPosition(SIMD3<Float>(0, 0, 0.05), relativeTo: ball)
+        zStroke.setOrientation(simd_quatf(transform), relativeTo: nil)
+        zStroke.components.set(InputTargetComponent(allowedInputTypes: .all))
+        contentEntity.addChild(zStroke)
+        
+        // yStrokeArrow
+        let yStroke = ModelEntity(
+            mesh: .init(shape: .generateBox(width: 0.004, height: 0.1, depth: 0.004)),
+            materials: [SimpleMaterial(color: .green, isMetallic: true)],
+            collisionShape: .generateSphere(radius: 0.005),
+            mass: 0.0
+        )
+        yStroke.name = "yStrokeArrow"
+        yStroke.setPosition(SIMD3<Float>(0, 0.05, 0), relativeTo: ball)
+        yStroke.setOrientation(simd_quatf(transform), relativeTo: nil)
+        yStroke.components.set(InputTargetComponent(allowedInputTypes: .all))
+        contentEntity.addChild(yStroke)
+        
+        // xStrokeArrow
+        let xStroke = ModelEntity(
+            mesh: .init(shape: .generateBox(width: 0.1, height: 0.004, depth: 0.004)),
+            materials: [SimpleMaterial(color: .red, isMetallic: true)],
+            collisionShape: .generateSphere(radius: 0.005),
+            mass: 0.0
+        )
+        xStroke.name = "xStrokeArrow"
+        xStroke.setPosition(SIMD3<Float>(0.05, 0, 0), relativeTo: ball)
+        xStroke.setOrientation(simd_quatf(transform), relativeTo: nil)
+        xStroke.components.set(InputTargetComponent(allowedInputTypes: .all))
+        contentEntity.addChild(xStroke)
     }
 }
