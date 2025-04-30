@@ -24,8 +24,11 @@ struct BothIndexFingerCoordinateClientView: View {
         }
     }
     
+    // modified by nagao 2025/4/7
     func onChangeReceivedMessage(receivedMessage: String){
-        if (receivedMessage == "reqBothIndexFingerCoordinate") {
+        if (receivedMessage == "startBothIndexFingerCoordinate") {
+            receiveStartBothIndexFingerCoordinate()
+        } else if (receivedMessage == "reqBothIndexFingerCoordinate") {
             receiveReqBothIndexFingerCoordinate()
         } else if (receivedMessage == "successBothIndexFingerCoordinate") {
             receiveSuccessBothIndexFingerCoordinate()
@@ -34,14 +37,17 @@ struct BothIndexFingerCoordinateClientView: View {
         }
     }
     
+    func receiveStartBothIndexFingerCoordinate(){
+        peerManager.myIndexFingerTrackingState = .myBothIndexFingerCoordinateStarted
+    }
+    
+    // modified by nagao 2025/4/7
     func receiveReqBothIndexFingerCoordinate(){
-        peerManager.isUpdatePeerManagerBothIndexFingerCoordinate = false
-        Thread.sleep(forTimeInterval: 0.1)
         let json = try! JSONEncoder().encode(peerManager.myBothIndexFingerCoordinate.codable)
         let jsonStr = String(data: json, encoding: .utf8) ?? ""
         peerManager.sendMessage("resBothIndexFingerCoordinate\(jsonStr)")
     }
-    
+
     func receiveSuccessBothIndexFingerCoordinate(){
         peerManager.sendMessage("receivedSuccessBothIndexFingerCoordinate")
         peerManager.transformationMatrixPreparationState = .confirm
@@ -50,5 +56,4 @@ struct BothIndexFingerCoordinateClientView: View {
     func receiveReset(){
         peerManager.isUpdatePeerManagerBothIndexFingerCoordinate = true
     }
-    
 }

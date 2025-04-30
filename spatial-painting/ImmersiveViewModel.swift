@@ -102,6 +102,19 @@ class ViewModel {
         }
     }
     
+    // 指先の球の色を変更 added by nagao 2025/3/11
+    func fingerSignal(hand: HandAnchor.Chirality, flag: Bool) {
+        if flag {
+            let goldColor = UIColor(red: 255/255, green: 215/255, blue: 0/255, alpha: 1.0)
+            let material = SimpleMaterial(color: goldColor, isMetallic: true)
+            self.fingerEntities[hand]?.components.set(ModelComponent(mesh: .generateSphere(radius: 0.01), materials: [material]))
+        } else {
+            let silverColor = UIColor(red: 220/255, green: 220/255, blue: 220/255, alpha: 1.0)
+            let material = SimpleMaterial(color: silverColor, isMetallic: true)
+            self.fingerEntities[hand]?.components.set(ModelComponent(mesh: .generateSphere(radius: 0.01), materials: [material]))
+        }
+    }
+
     var dataProvidersAreSupported: Bool {
         HandTrackingProvider.isSupported && SceneReconstructionProvider.isSupported
     }

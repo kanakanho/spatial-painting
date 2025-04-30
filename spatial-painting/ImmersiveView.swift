@@ -34,7 +34,7 @@ struct ImmersiveView: View {
                 let root = model.canvas.root
                 content.add(root)
 
-                // added by nagao 3/22
+                // added by nagao 2025/3/22
                 for fingerEntity in model.fingerEntities.values {
                     //print("Collision Setting for \(fingerEntity.name)")
                     _ = content.subscribe(to: CollisionEvents.Began.self, on: fingerEntity) { collisionEvent in
@@ -134,11 +134,6 @@ struct ImmersiveView: View {
         .task {
             await model.processWorldUpdates()
         }
-//        .task {
-//            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-//                model.initBall(transform: latestRightIndexFingerCoordinates)
-//            }
-//        }
         .task {
             DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
                 model.colorPaletModel.initEntity()
@@ -206,6 +201,10 @@ struct ImmersiveView: View {
             
             peerManager.myBothIndexFingerCoordinate = BothIndexFingerCoordinate(unixTime: Int(Date().timeIntervalSince1970), indexFingerCoordinate: IndexFingerCoordinate(left: latestLeftIndexFingerCoordinates, right:  latestRightIndexFingerCoordinates))
         }
+        // added by nagao 2025/4/7
+        .onChange(of: peerManager.myIndexFingerTrackingState) {
+            respondToStateChange()
+        }
         .onChange(of: peerManager.receivedMessage) {
             if (peerManager.receivedMessage.hasPrefix("selectColor:")){
                 let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "selectColor:", with: "")
@@ -239,7 +238,7 @@ struct ImmersiveView: View {
             if (peerManager.transformationMatrixPreparationState == .prepared) {
                 model.isCanvasEnabled = true
                 if (peerManager.isHost) {
-                    model.initBall(transform: (peerManager.transformationMatrixClientToHost * peerManager.rightIndexFingerCoordinates.rightIndexFingerCoordinates))
+                    model.initBall(transform: peerManager.transformationMatrixClientToHost * peerManager.rightIndexFingerCoordinates.rightIndexFingerCoordinates)
                 } else {
                     model.initBall(transform: peerManager.myRightIndexFingerCoordinates.rightIndexFingerCoordinates)
                 }
@@ -253,6 +252,53 @@ struct ImmersiveView: View {
             let floatList: [Float] = clientTransformMatrix.floatList
             let floatListStr = floatList.map { String($0) }
             peerManager.sendMessage("matrix:\(entity.name),\(floatListStr)")
+        }
+    }
+    
+    // added by nagao 2025/4/7
+    func respondToStateChange() {
+        if (peerManager.myIndexFingerTrackingState == .initial) {
+            model.showFingerTipSpheres()
+        } else if (peerManager.myIndexFingerTrackingState == .myRightIndexFingerCoordinatesStarted) {
+            model.fingerSignal(hand: .right, flag: true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                Task {
+                    peerManager.isUpdatePeerManagerRightIndexFingerCoordinates = false
+                    if peerManager.isHost {
+                        peerManager.sendMessage("reqRightIndexFingerCoordinates")
+                    }
+                    model.fingerSignal(hand: .right, flag: false)
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        Task {
+                            if peerManager.isHost {
+                                peerManager.sendMessage("successRightIndexFingerCoordinates")
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (peerManager.myIndexFingerTrackingState == .myBothIndexFingerCoordinateStarted) {
+            model.fingerSignal(hand: .right, flag: true)
+            //model.fingerSignal(hand: .left, flag: true)
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                Task {
+                    peerManager.isUpdatePeerManagerBothIndexFingerCoordinate = false
+                    if peerManager.isHost {
+                        peerManager.sendMessage("reqBothIndexFingerCoordinate")
+                    }
+                    model.fingerSignal(hand: .right, flag: false)
+                    //model.fingerSignal(hand: .left, flag: false)
+
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                        Task {
+                            if peerManager.isHost {
+                                peerManager.sendMessage("successBothIndexFingerCoordinate")
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

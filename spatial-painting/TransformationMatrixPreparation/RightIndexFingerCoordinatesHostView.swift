@@ -53,12 +53,13 @@ struct RightIndexFingerCoordinatesHostView: View {
         }
     }
     
+    // modified by nagao 2025/4/7
     func start() {
-        peerManager.sendMessage("reqRightIndexFingerCoordinates")
-        peerManager.isUpdatePeerManagerRightIndexFingerCoordinates = false
+        peerManager.sendMessage("startRightIndexFingerCoordinates")
+        peerManager.myIndexFingerTrackingState = .myRightIndexFingerCoordinatesStarted
         Thread.sleep(forTimeInterval: 0.1)
     }
-    
+
     func checkFingerSuccess() {
         peerManager.sendMessage("successRightIndexFingerCoordinates")
     }
