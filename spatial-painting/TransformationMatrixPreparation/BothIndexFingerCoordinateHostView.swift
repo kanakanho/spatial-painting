@@ -50,9 +50,10 @@ struct BothIndexFingerCoordinateHostView: View {
         }
     }
     
+    // modified by nagao 2025/4/7
     func start() {
-        peerManager.sendMessage("reqBothIndexFingerCoordinate")
-        peerManager.isUpdatePeerManagerBothIndexFingerCoordinate = false
+        peerManager.sendMessage("startBothIndexFingerCoordinate")
+        peerManager.myIndexFingerTrackingState = .myBothIndexFingerCoordinateStarted
         Thread.sleep(forTimeInterval: 0.1)
     }
     

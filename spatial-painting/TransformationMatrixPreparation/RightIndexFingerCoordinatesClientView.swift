@@ -24,8 +24,11 @@ struct RightIndexFingerCoordinatesClientView: View {
         }
     }
     
+    // modified by nagao 2025/4/7
     func onChangeReceivedMessage(receivedMessage: String){
-        if (peerManager.receivedMessage == "reqRightIndexFingerCoordinates") {
+        if (peerManager.receivedMessage == "startRightIndexFingerCoordinates") {
+            receiveStartRightIndexFingerCoordinates()
+        } else if (peerManager.receivedMessage == "reqRightIndexFingerCoordinates") {
             receiveReqRightIndexFingerCoordinates()
         } else if (peerManager.receivedMessage == "successRightIndexFingerCoordinates") {
             receiveSuccessRightIndexFingerCoordinates()
@@ -34,9 +37,12 @@ struct RightIndexFingerCoordinatesClientView: View {
         }
     }
     
+    func receiveStartRightIndexFingerCoordinates(){
+        peerManager.myIndexFingerTrackingState = .myRightIndexFingerCoordinatesStarted
+    }
+    
+    // modified by nagao 2025/4/7
     func receiveReqRightIndexFingerCoordinates(){
-        peerManager.isUpdatePeerManagerRightIndexFingerCoordinates = false
-        Thread.sleep(forTimeInterval: 0.1)
         let json = try! JSONEncoder().encode(peerManager.myRightIndexFingerCoordinates.codable)
         let jsonStr = String(data: json, encoding: .utf8) ?? ""
         peerManager.sendMessage("resRightIndexFingerCoordinates\(jsonStr)")

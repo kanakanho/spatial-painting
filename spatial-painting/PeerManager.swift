@@ -23,12 +23,18 @@ enum TransformationMatrixPreparationState {
 
 enum MyIndexFingerTrackingState {
     case initial
-    case myRightIndexFingerCoordinates
-    case myBothIndexFingerCoordinate
+    case myRightIndexFingerCoordinatesStarted
+    case myRightIndexFingerCoordinatesFailed
+    case myRightIndexFingerCoordinatesSucceeded
+    case myBothIndexFingerCoordinateStarted
+    case myBothIndexFingerCoordinateFailed
+    case myBothIndexFingerCoordinateSucceeded
 }
 
 class PeerManager: NSObject, ObservableObject {
     @Published var transformationMatrixPreparationState: TransformationMatrixPreparationState = .initial
+    @Published var myIndexFingerTrackingState: MyIndexFingerTrackingState = .initial
+
     var transformationMatrix:simd_float4x4 = .init()
     var transformationMatrixClientToHost:simd_float4x4 = .init()
     
@@ -63,6 +69,23 @@ class PeerManager: NSObject, ObservableObject {
         advertiser.delegate = self
         browser = MCNearbyServiceBrowser(peer: peerID, serviceType: serviceType)
         browser.delegate = self
+    }
+
+    func debugPrint() {
+        print("transformationMatrixPreparationState: \(transformationMatrixPreparationState)")
+        print("myIndexFingerTrackingState: \(myIndexFingerTrackingState)")
+        print("rightIndexFingerCoordinates")
+        print(rightIndexFingerCoordinates)
+        print("bothIndexFingerCoordinate")
+        print(bothIndexFingerCoordinate)
+        print("myRightIndexFingerCoordinates")
+        print(myRightIndexFingerCoordinates)
+        print("myBothIndexFingerCoordinate")
+        print(myBothIndexFingerCoordinate)
+        print("transformationMatrix")
+        print(transformationMatrix)
+        print("transformationMatrixClientToHost")
+        print(transformationMatrixClientToHost)
     }
     
     func start() {
@@ -127,7 +150,7 @@ class PeerManager: NSObject, ObservableObject {
     func calculateTransformationMatrix() {
         let hostMatrix = calcAffineMatrixArgumentList(myRightIndexFingerCoordinates.rightIndexFingerCoordinates, myBothIndexFingerCoordinate.indexFingerCoordinate.left, myBothIndexFingerCoordinate.indexFingerCoordinate.right)
         
-        let clientMatrix = calcAffineMatrixArgumentList(rightIndexFingerCoordinates.rightIndexFingerCoordinates, bothIndexFingerCoordinate.indexFingerCoordinate.right, bothIndexFingerCoordinate.indexFingerCoordinate.left)
+        let clientMatrix = calcAffineMatrixArgumentList(rightIndexFingerCoordinates.rightIndexFingerCoordinates, bothIndexFingerCoordinate.indexFingerCoordinate.left, bothIndexFingerCoordinate.indexFingerCoordinate.right)
         
         print("hostMatrix")
         print(hostMatrix)
