@@ -21,6 +21,12 @@ struct ConfirmView: View {
             Text(peerManager.transformationMatrix.columns.2.description)
             Text(peerManager.transformationMatrix.columns.3.description)
             
+            Text("クライアントからホストへの座標変換行列")
+            Text(peerManager.transformationMatrixClientToHost.columns.0.description)
+            Text(peerManager.transformationMatrixClientToHost.columns.1.description)
+            Text(peerManager.transformationMatrixClientToHost.columns.2.description)
+            Text(peerManager.transformationMatrixClientToHost.columns.3.description)
+            
             Text("右手の座標の共有").font(.title)
             Text("相手").font(.title2)
             Text(peerManager.rightIndexFingerCoordinates.codable.rightIndexFingerCoordinates.description)

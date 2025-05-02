@@ -165,7 +165,7 @@ func polar(_ M: simd_double3x3) -> (simd_double3x3,simd_double3x3) {
     return (u,p)
 }
 
-func removeScaleAffineMatrix(_ matrix: [[Double]]) -> ([Double],[[Double]]) {
+func removeScaleAffineMatrix(_ matrix: [[Double]]) -> [[Double]] {
     // 3x3 部分行列 (回転 + スケーリング)
     let M = simd_double3x3(
         SIMD3<Double>(matrix[0][0], matrix[1][0], matrix[2][0]),
@@ -183,14 +183,8 @@ func removeScaleAffineMatrix(_ matrix: [[Double]]) -> ([Double],[[Double]]) {
             newMatrix[i][j] = Double(R[i][j])
         }
     }
-    
-    // スケーリングを計算
-    var scale = [Double](repeating: 0, count: 3)
-    for i in 0..<3 {
-        scale[i] = sqrt(pow(matrix[i][0], 2) + pow(matrix[i][1], 2) + pow(matrix[i][2], 2))
-    }
 
-    return (scale,newMatrix)
+    return newMatrix
 }
 
 func matmul4x4_4x1(_ A: [[Double]], _ B: [Double]) -> [Double] {
@@ -204,7 +198,7 @@ func matmul4x4_4x1(_ A: [[Double]], _ B: [Double]) -> [Double] {
     return result
 }
 
-func rotation(axis: String, _ mine_hand_arrows_shift: [[Double]] ,_ world_hand_arrows_shfit: [[Double]], _ affineMatrix: [[Double]], _ scale: [Double]) -> [[Double]] {
+func rotation(axis: String, _ mine_hand_arrows_shift: [[Double]] ,_ world_hand_arrows_shfit: [[Double]], _ affineMatrix: [[Double]]) -> [[Double]] {
     var world_arrows_shift:[Double] = []
     switch axis {
     case "x":
@@ -274,15 +268,8 @@ func rotation(axis: String, _ mine_hand_arrows_shift: [[Double]] ,_ world_hand_a
         [0, 0, 1, 0],
         [0, 0, 0, 1]
     ]
-    
-    let scaleMatrix:[[Double]] = [
-        [scale[0], 0, 0, 0],
-        [0, scale[1], 0, 0],
-        [0, 0, scale[2], 0],
-        [0, 0, 0, 1]
-    ]
 
-    let rotationMatrix = matmul(matmul(matmul(scaleMatrix,theta_x_rotation), theta_y_rotation), theta_z_rotation)
+    let rotationMatrix = matmul(matmul(theta_x_rotation, theta_y_rotation), theta_z_rotation)
 
     switch axis {
     case "x":
@@ -314,7 +301,7 @@ func rotation(axis: String, _ mine_hand_arrows_shift: [[Double]] ,_ world_hand_a
     }
 }
 
-func shiftRotateAffineMatrix(_ A: [[[Double]]], _ B: [[[Double]]], _ affineMatrix: [[Double]], _ scale: [Double]) -> [[Double]] {
+func shiftRotateAffineMatrix(_ A: [[[Double]]], _ B: [[[Double]]], _ affineMatrix: [[Double]]) -> [[Double]] {
     // Bの位置を取得
     let B_pos = [B[0][0][3], B[0][1][3], B[0][2][3]]
 
@@ -343,7 +330,7 @@ func shiftRotateAffineMatrix(_ A: [[[Double]]], _ B: [[[Double]]], _ affineMatri
     let A_relative = shifted_transformed.map { zip($0, A_origin).map(-) }
 
     // 回転補正（Y→Z→Xの順）
-    let yMatrix = rotation(axis: "y", B_relative, A_relative, affineMatrix,scale)
+    let yMatrix = rotation(axis: "y", B_relative, A_relative, affineMatrix)
 
     return yMatrix
 }
@@ -391,10 +378,9 @@ func calcAffineMatrix(_ A: [[[Double]]], _ B: [[[Double]]]) -> [[Double]] {
     var affineMatrix:[[Double]] = eqSolveMatrix.transpose4x4
     affineMatrix[3][3] = 1.0
 
-    var scale: [Double] = []
-    (scale,affineMatrix) = removeScaleAffineMatrix(affineMatrix)
+    affineMatrix = removeScaleAffineMatrix(affineMatrix)
 
-    affineMatrix = shiftRotateAffineMatrix(A, B, affineMatrix, scale)
+    affineMatrix = shiftRotateAffineMatrix(A, B, affineMatrix)
 
     return affineMatrix
 }
