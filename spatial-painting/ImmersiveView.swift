@@ -151,15 +151,9 @@ struct ImmersiveView: View {
                     if let pos = lastIndexPose {
                         model.canvas.addPoint(pos)
                         if (peerManager.isHost){
-                            let matrix = simd_float4x4(
-                                SIMD4<Float>(1, 0, 0, 0),
-                                SIMD4<Float>(0, 1, 0, 0),
-                                SIMD4<Float>(0, 0, 1, 0),
-                                SIMD4<Float>(pos.x, pos.y, pos.z, 1)
-                            )
-                            let clientMatrix = peerManager.transformationMatrix * matrix
-                            let clinetPos = clientMatrix.position
-                            peerManager.sendMessage("addPoint:\(clinetPos.x),\(clinetPos.y),\(clinetPos.z)")
+                            let matrix:[Double] = [pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), 1]
+                            let clientPos = matmul4x4_4x1(peerManager.transformationMatrixClientToHost.toDoubleList(),matrix)
+                            peerManager.sendMessage("addPoint:\(clientPos[0].toFloat()),\(clientPos[1].toFloat()),\(clientPos[2].toFloat())")
                         } else {
                             peerManager.sendMessage("addPoint:\(pos.x),\(pos.y),\(pos.z)")
                         }
@@ -213,15 +207,10 @@ struct ImmersiveView: View {
                 let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "addPoint:", with: "")
                 let point = receivedMessage.split(separator: ",").map { Float($0) ?? 0 }
                 if (peerManager.isHost) {
-                    let matrix = simd_float4x4(
-                        SIMD4<Float>(1, 0, 0, 0),
-                        SIMD4<Float>(0, 1, 0, 0),
-                        SIMD4<Float>(0, 0, 1, 0),
-                        SIMD4<Float>(point[0], point[1], point[2], 1)
-                    )
-                    let clientMatrix = peerManager.transformationMatrixClientToHost * matrix
-                    let clinetPos = clientMatrix.position
-                    model.canvas.addPoint(clinetPos)
+                    let matrix:[Double] = [point[0].toDouble(), point[1].toDouble(), point[2].toDouble(), 1]
+                    let clientPos = matmul4x4_4x1(peerManager.transformationMatrixClientToHost.toDoubleList(),matrix)
+                    let pos = SIMD3<Float>(clientPos[0].toFloat(), clientPos[1].toFloat(), clientPos[2].toFloat())
+                    model.canvas.addPoint(pos)
                 } else {
                     let pos = SIMD3<Float>(point[0], point[1], point[2])
                     model.canvas.addPoint(pos)

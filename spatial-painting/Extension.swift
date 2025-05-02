@@ -15,7 +15,7 @@ extension simd_float3 {
 
 extension simd_float4x4 {
     var position: SIMD3<Float> {
-        self.columns.3.xyz
+        return SIMD3<Float>(columns.0.w, columns.1.w, columns.2.w)
     }
     
     init?(floatListStr: [String]) {
