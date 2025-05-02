@@ -15,7 +15,7 @@ extension simd_float3 {
 
 extension simd_float4x4 {
     var position: SIMD3<Float> {
-        return SIMD3<Float>(columns.0.w, columns.1.w, columns.2.w)
+        self.columns.3.xyz
     }
     
     init?(floatListStr: [String]) {
@@ -82,3 +82,17 @@ extension [[Double]] {
     }
 }
 
+extension [[Float]] {
+    func tosimd_float4x4() -> simd_float4x4 {
+        return simd_float4x4([
+            SIMD4<Float>(self[0][0], self[0][1], self[0][2], self[0][3]),
+            SIMD4<Float>(self[1][0], self[1][1], self[1][2], self[1][3]),
+            SIMD4<Float>(self[2][0], self[2][1], self[2][2], self[2][3]),
+            SIMD4<Float>(self[3][0], self[3][1], self[3][2], self[3][3])
+        ])
+    }
+    
+    func toDoubleList() -> [[Double]] {
+        return self.map { $0.map { Double($0) } }
+    }
+}

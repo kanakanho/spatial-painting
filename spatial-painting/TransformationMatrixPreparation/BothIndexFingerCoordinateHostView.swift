@@ -71,6 +71,8 @@ struct BothIndexFingerCoordinateHostView: View {
             receiveResBothIndexFingerCoordinate()
         } else if (peerManager.receivedMessage == "receivedSuccessBothIndexFingerCoordinate") {
             receiveReceivedSuccessBothIndexFingerCoordinate()
+        } else if(peerManager.receivedMessage == "receivedReqTransformationMatrix") {
+            receivedReceivedReqTransformationMatrix()
         }
     }
     
@@ -84,7 +86,12 @@ struct BothIndexFingerCoordinateHostView: View {
     
     func receiveReceivedSuccessBothIndexFingerCoordinate() {
         peerManager.calculateTransformationMatrix()
-        print(peerManager.transformationMatrix)
+        let json = try! JSONEncoder().encode(peerManager.transformationMatrix.codable)
+        let jsonStr = String(data: json, encoding: .utf8) ?? ""
+        peerManager.sendMessage("reqTransformationMatrix\(jsonStr)")
+    }
+    
+    func receivedReceivedReqTransformationMatrix() {
         peerManager.transformationMatrixPreparationState = .confirm
     }
 }

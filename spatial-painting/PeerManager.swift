@@ -158,7 +158,6 @@ class PeerManager: NSObject, ObservableObject {
         print(clientMatrix)
         
         transformationMatrix = calcAffineMatrix(hostMatrix,clientMatrix).tosimd_float4x4()
-        transformationMatrixClientToHost = calcAffineMatrix(clientMatrix,hostMatrix).tosimd_float4x4()
     }
 }
 

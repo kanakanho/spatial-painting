@@ -150,13 +150,16 @@ struct ImmersiveView: View {
 
                     if let pos = lastIndexPose {
                         model.canvas.addPoint(pos)
-                        if (peerManager.isHost){
-                            let matrix:[Double] = [pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), 1]
-                            let clientPos = matmul4x4_4x1(peerManager.transformationMatrixClientToHost.toDoubleList(),matrix)
-                            peerManager.sendMessage("addPoint:\(clientPos[0].toFloat()),\(clientPos[1].toFloat()),\(clientPos[2].toFloat())")
-                        } else {
-                            peerManager.sendMessage("addPoint:\(pos.x),\(pos.y),\(pos.z)")
-                        }
+//                        if (peerManager.isHost){
+//                            let matrix:[Double] = [pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), 1]
+//                            let clientPos = matmul4x4_4x1(peerManager.transformationMatrixClientToHost.toDoubleList(),matrix)
+//                            peerManager.sendMessage("addPoint:\(clientPos[0].toFloat()),\(clientPos[1].toFloat()),\(clientPos[2].toFloat())")
+//                        } else {
+//                            peerManager.sendMessage("addPoint:\(pos.x),\(pos.y),\(pos.z)")
+//                        }
+                        let matrix:[Double] = [pos.x.toDouble(), pos.y.toDouble(), pos.z.toDouble(), 1]
+                        let clientPos = matmul4x4_4x1(peerManager.transformationMatrix.toDoubleList(),matrix)
+                        peerManager.sendMessage("addPoint:\(clientPos[0].toFloat()),\(clientPos[1].toFloat()),\(clientPos[2].toFloat())")
                     }
                 })
                 .onEnded({ _ in
@@ -206,17 +209,37 @@ struct ImmersiveView: View {
             } else if (peerManager.receivedMessage.hasPrefix("addPoint:")){
                 let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "addPoint:", with: "")
                 let point = receivedMessage.split(separator: ",").map { Float($0) ?? 0 }
-                if (peerManager.isHost) {
-                    let matrix:[Double] = [point[0].toDouble(), point[1].toDouble(), point[2].toDouble(), 1]
-                    let clientPos = matmul4x4_4x1(peerManager.transformationMatrixClientToHost.toDoubleList(),matrix)
-                    let pos = SIMD3<Float>(clientPos[0].toFloat(), clientPos[1].toFloat(), clientPos[2].toFloat())
-                    model.canvas.addPoint(pos)
-                } else {
-                    let pos = SIMD3<Float>(point[0], point[1], point[2])
-                    model.canvas.addPoint(pos)
-                }
+//                if (peerManager.isHost) {
+//                    let matrix:[Double] = [point[0].toDouble(), point[1].toDouble(), point[2].toDouble(), 1]
+//                    let clientPos = matmul4x4_4x1(peerManager.transformationMatrixClientToHost.toDoubleList(),matrix)
+//                    let pos = SIMD3<Float>(clientPos[0].toFloat(), clientPos[1].toFloat(), clientPos[2].toFloat())
+//                    model.canvas.addPoint(pos)
+//                } else {
+//                    let pos = SIMD3<Float>(point[0], point[1], point[2])
+//                    model.canvas.addPoint(pos)
+//                }
+                let pos = SIMD3<Float>(point[0], point[1], point[2])
+                model.canvas.addPoint(pos)
             } else if (peerManager.receivedMessage == "finishStroke"){
                 model.canvas.finishStroke()
+            } else if (peerManager.receivedMessage.hasPrefix("reqPrepareInitBall")) {
+                // 受け取った相手の右手の行列を相手側に表示させるための行列に加工
+                let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "reqPrepareInitBall", with: "")
+                // デコード
+                let data = receivedMessage.data(using: .utf8)!
+                let rightIndexMatrix = try! JSONDecoder().decode([[Float]].self, from: data)
+                // 計算
+                let anotherTransform =  peerManager.transformationMatrix * rightIndexMatrix.tosimd_float4x4()
+                // エンコード
+                let json = try! JSONEncoder().encode(anotherTransform.codable)
+                let jsonStr = String(data: json, encoding: .utf8) ?? ""
+                peerManager.sendMessage("reqInitBall\(jsonStr)")
+            } else if (peerManager.receivedMessage.hasPrefix("reqInitBall")) {
+                // 受け取った行列をそのまま表示に用いる
+                let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "reqPrepareInitBall", with: "")
+                let data = receivedMessage.data(using: .utf8)!
+                let ballMatrix = try! JSONDecoder().decode([[Float]].self, from: data)
+                model.initBall(transform: ballMatrix.tosimd_float4x4())
             }
 //            if (peerManager.receivedMessage.hasPrefix("matrix:")){
 //                let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "matrix:", with: "")
@@ -226,11 +249,14 @@ struct ImmersiveView: View {
         .onChange(of: peerManager.transformationMatrixPreparationState) {
             if (peerManager.transformationMatrixPreparationState == .prepared) {
                 model.isCanvasEnabled = true
-                if (peerManager.isHost) {
-                    model.initBall(transform: peerManager.transformationMatrixClientToHost * peerManager.rightIndexFingerCoordinates.rightIndexFingerCoordinates)
-                } else {
-                    model.initBall(transform: peerManager.myRightIndexFingerCoordinates.rightIndexFingerCoordinates)
-                }
+                let json = try! JSONEncoder().encode(peerManager.myRightIndexFingerCoordinates.rightIndexFingerCoordinates.codable)
+                let jsonStr = String(data: json, encoding: .utf8) ?? ""
+                peerManager.sendMessage("reqPrepareInitBall\(jsonStr)")
+//                if (peerManager.isHost) {
+//                    model.initBall(transform: peerManager.transformationMatrixClientToHost * peerManager.rightIndexFingerCoordinates.rightIndexFingerCoordinates)
+//                } else {
+//                    model.initBall(transform: peerManager.myRightIndexFingerCoordinates.rightIndexFingerCoordinates)
+//                }
             }
         }
     }
