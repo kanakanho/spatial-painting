@@ -52,7 +52,6 @@ struct BothIndexFingerCoordinateClientView: View {
 
     func receiveSuccessBothIndexFingerCoordinate(){
         peerManager.sendMessage("receivedSuccessBothIndexFingerCoordinate")
-        peerManager.transformationMatrixPreparationState = .confirm
     }
     
     func receiveReset(){
@@ -65,5 +64,6 @@ struct BothIndexFingerCoordinateClientView: View {
         let transformationMatrix = try! JSONDecoder().decode([[Float]].self, from: data)
         peerManager.transformationMatrix = inverseMatrix(transformationMatrix.toDoubleList()).tosimd_float4x4()
         peerManager.sendMessage("receivedReqTransformationMatrix")
+        peerManager.transformationMatrixPreparationState = .confirm
     }
 }
