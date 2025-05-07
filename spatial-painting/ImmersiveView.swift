@@ -236,7 +236,7 @@ struct ImmersiveView: View {
                 peerManager.sendMessage("reqInitBall\(jsonStr)")
             } else if (peerManager.receivedMessage.hasPrefix("reqInitBall")) {
                 // 受け取った行列をそのまま表示に用いる
-                let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "reqPrepareInitBall", with: "")
+                let receivedMessage = peerManager.receivedMessage.replacingOccurrences(of: "reqInitBall", with: "")
                 let data = receivedMessage.data(using: .utf8)!
                 let ballMatrix = try! JSONDecoder().decode([[Float]].self, from: data)
                 model.initBall(transform: ballMatrix.tosimd_float4x4())
